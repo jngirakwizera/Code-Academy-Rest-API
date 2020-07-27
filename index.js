@@ -8,7 +8,7 @@ import User from './user.js';
 import Shelter from './shelter.js';
 import ShelterUser from './shelterUser.js';
 import ShelterUpdate from './shelterUpdates.js';
-
+import cors from 'cors';
 import express from 'express';
 import bodyParser from 'body-parser';
 // bring in Passport
@@ -27,6 +27,7 @@ const port = 3000;
 // Now apply (or use) the bodyParser middleware in Express
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));   // this allows us to work with x-www-url-encoded data (used primarily in JSON Web Token authentication processes)
+app.use(cors());
 
 // Make Express now listen for HTTP traffic
 app.listen(port, () => {
@@ -36,7 +37,7 @@ app.listen(port, () => {
 // define a GET endpoint for retrieving all User documents.
 app.get("/users", passport.authenticate("jwt", { session: false }), async(req, res) => { 
     // get all of the User docs from MongoDB
-    
+   
     //only let admins view all users
     if(!req.user.is_admin){
         return res.send({message: "Unauthorized user"});
@@ -106,6 +107,7 @@ app.post("/users", async(req, res) => {
 
 app.post("/users/authenticate", async(req, res) =>{
     // take username and password out of the request body
+    
     try {
         if(req.body.email_address && req.body.password) {
            // be sure to sanitize your data first.  Just keeping it simple here for demonstration
@@ -122,9 +124,11 @@ app.post("/users/authenticate", async(req, res) =>{
                }
                // assuming no issues, go ahead and "login" the person via Passport
                req.login(user, { session: false }, (err) => {
+                   console.log("user:" + user);
                    if (err) {
                        res.send(err);
                    }
+                  
                    // if no error, generate the JWT to signify that the person logged in successfully,
                    const token = JWT.sign(user.toJSON(), "ThisNeedsToBeAStrongPasswordPleaseChange");
                    return res.json({ user, token });
@@ -179,11 +183,12 @@ app.put("/users/:userId",  passport.authenticate("jwt", { session: false }), asy
 /************************************************************ */
 
 
-app.get("/shelters", passport.authenticate("jwt", { session: false }), async(req, res) => { 
+app.get("/shelters",  async(req, res) => { 
   
-    if(!req.user.is_admin){
-        return res.send({message: "Unauthorized user"});
-    }
+   
+    // if(!req.user.is_admin){
+    //     return res.send({message: "Unauthorized user"});
+    // }
     try {
         let allShelterDocs = await Shelter.read();
         res.send(allShelterDocs);    // objects are already in JSON format, so no need to reformat them.
@@ -314,7 +319,7 @@ app.get("/shelterUsers", passport.authenticate("jwt", { session: false }), async
 }); 
 
 // Make an endpoint that returns all ShelterUser docs, based on shelter id
-app.get("/shelterUsers/shelter/:shelterId", async(req, res) => { 
+app.get("/shelterUsers/shelter/:shelterId", passport.authenticate("jwt", { session: false }), async(req, res) => { 
     try {
         // get the id from the url request
         let id = req.params.shelterId;
@@ -330,12 +335,13 @@ app.get("/shelterUsers/shelter/:shelterId", async(req, res) => {
 
 
 // Make an endpoint that returns one ShelterUser doc, based on user id
-app.get("/shelterUsers/user/:userId", async(req, res) => { 
+app.get("/shelterUsers/user/:userId",  passport.authenticate("jwt", { session: false }), async(req, res) => { 
     try {
         // get the id from the url request
         let id = req.params.userId;
         // Retrieve this one ShelterUser doc
-        let userDocs = await ShelterUser.read({ user_id: id });
+        let populateList = ['shelter_id','user_id'];
+        let userDocs = await ShelterUser.read({ user_id: id }, populateList);
         let userDoc = userDocs[0];
         res.send(userDoc);
     } catch (err) {
@@ -360,6 +366,7 @@ app.post("/shelterUsers",  passport.authenticate("jwt", { session: false }), asy
             };
 
             // Now create the Person doc
+           
             let newPerson = await ShelterUser.create(newShelterPerson);
             res.send({ message: "Shelter User created successfully", newPerson });
         }

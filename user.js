@@ -34,7 +34,8 @@ export default class User extends Entity {
     static async authenticate(givenPassword, thePersonDoc) {
         // assume givenPassword is what the user typed in, and assume thePersonDoc is the actual Person Document found for
         // the given username.  NOTE: make sure that you enforce unique usernames.
-        let salt = thePersonDoc.salt;
+        console.log("person doc: "+ thePersonDoc);
+        // let salt = thePersonDoc.salt;
         let encryptedPassword = thePersonDoc.password;
 
         const match = await bcrypt.compare(givenPassword, encryptedPassword);
